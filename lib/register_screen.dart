@@ -1,5 +1,5 @@
 import 'package:flutter/material.dart';
-import 'package:flutter_teste/auth_service.dart';
+import 'package:flutter_teste/services/auth_service.dart';
 import 'package:flutter_teste/facebook_login.dart';
 import 'package:flutter_teste/google_login_screen.dart';
 import 'login_screen.dart';

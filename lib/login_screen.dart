@@ -2,6 +2,7 @@
 
 import 'dart:math' as math;
 import 'package:flutter/material.dart';
+import 'package:flutter_teste/services/auth_service.dart';
 import 'register_screen.dart';
 import 'catalogo_screen.dart';
 import 'google_login_screen.dart';
@@ -15,6 +16,7 @@ class LoginScreen extends StatefulWidget {
 }
 
 class _LoginScreenState extends State<LoginScreen> {
+  final authService = AuthService();
   final _emailController = TextEditingController();
   final _passwordController = TextEditingController();
   bool _obscurePassword = true;
@@ -65,14 +67,21 @@ class _LoginScreenState extends State<LoginScreen> {
       _isLoading = true;
     });
 
+    final result = await authService.loginWithEmail(
+      email: _emailController.text,
+      password: _passwordController.text,
+    );
+
     await Future.delayed(const Duration(seconds: 2));
 
-    setState(() {
-      _isLoading = false;
-    });
+    setState(() => _isLoading = false);
 
-    _showSnackBar('Login realizado com sucesso!');
-    _navigateToCatalog();
+    if (result.success) {
+      _showSnackBar('Login realizado com sucesso!');
+      _navigateToCatalog();
+    } else {
+      _showSnackBar(result.errorMessage ?? 'Erro desconhecido');
+    }
   }
 
   Future<void> _loginWithGoogle() async {
