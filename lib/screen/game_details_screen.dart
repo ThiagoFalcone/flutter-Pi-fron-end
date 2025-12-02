@@ -1,13 +1,19 @@
 // game_details_screen.dart
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
-import 'game_model.dart';
-import 'game_provider.dart';
+import '../models/game_model.dart';
+import '../providers/game_provider.dart';
 
 class GameDetailsScreen extends StatefulWidget {
   final Game game;
 
-  const GameDetailsScreen({super.key, required this.game});
+  const GameDetailsScreen({
+    super.key,
+    required this.game,
+    required opinionsCount,
+    required averageRating,
+    required recommendationRate,
+  });
 
   @override
   State<GameDetailsScreen> createState() => _GameDetailsScreenState();

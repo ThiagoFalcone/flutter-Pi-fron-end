@@ -1,8 +1,8 @@
 // my_game_screen.dart
 import 'package:flutter/material.dart';
-import 'custom_change_notifier.dart';
-import 'game_model.dart';
-import 'game_provider.dart';
+import 'package:provider/provider.dart'; // ADICIONE ESTA LINHA - Provider oficial
+import '../models/game_model.dart';
+import '../providers/game_provider.dart';
 
 class MyGamesScreen extends StatefulWidget {
   const MyGamesScreen({super.key});

@@ -1,9 +1,9 @@
 // game_provider.dart
 // ignore_for_file: non_constant_identifier_names
 
-import 'package:flutter_teste/game_repository.dart';
+import 'package:flutter_teste/repository/game_repository.dart';
 import 'custom_change_notifier.dart';
-import 'game_model.dart';
+import '../models/game_model.dart';
 
 class GameProvider extends CustomChangeNotifier {
   final GameRepository _gameRepository = GameRepository();

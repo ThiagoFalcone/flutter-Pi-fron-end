@@ -1,8 +1,17 @@
+// screens/catalogo_screen.dart
+// ignore_for_file: unused_element, avoid_print, deprecated_member_use, non_constant_identifier_names
+
+import 'dart:convert';
 import 'package:flutter/material.dart';
-import 'game_model.dart';
-import 'game_details_screen.dart';
-import 'my_games_screen.dart';
-import 'profile_screen.dart';
+import 'package:flutter_teste/models/filter_modal_content.dart'
+    show FilterModalContent;
+import 'package:flutter_teste/screen/my_games_screen.dart' show MyGamesScreen;
+import 'package:shared_preferences/shared_preferences.dart';
+import '../models/game_model.dart';
+import 'package:flutter_teste/screen/game_details_screen.dart';
+import 'package:flutter_teste/screen/profile_screen.dart';
+import 'package:flutter_teste/screen/opinion_screen.dart';
+import 'package:flutter_teste/screen/opinion_editor_screen.dart';
 
 class GamesCatalogScreen extends StatefulWidget {
   const GamesCatalogScreen({super.key});
@@ -21,7 +30,7 @@ class _GamesCatalogScreenState extends State<GamesCatalogScreen> {
       price: 79.90,
       rating: 4.9,
       coverUrl:
-          'https://images.igdb.com/igdb/image/upload/t_cover_big/co1xrx.jpg',
+          'https://encrypted-tbn0.gstatic.com/images?q=tbn:ANd9GcR8gE2Qf0z7ABPnQIB_cgs1XSOKuQ9Ely_VA3cCRZQTmvRI152ckfATCqQFo7cxVG7Lvi2dk3eR7RMoAxO7F6aa-rlnn9qj8g_-7bMwrtI&s=10',
       description: 'RPG de mundo aberto em um universo de fantasia sombria.',
       category: 'RPG',
       platforms: ['PC', 'PlayStation', 'Xbox', 'Switch'],
@@ -327,6 +336,71 @@ class _GamesCatalogScreenState extends State<GamesCatalogScreen> {
   String _searchQuery = '';
   final TextEditingController _searchController = TextEditingController();
 
+  // Cache para estatísticas de opiniões
+  final Map<String, Map<String, dynamic>> _gameStats = {};
+
+  @override
+  void initState() {
+    super.initState();
+    _loadOpinionsStats();
+  }
+
+  Future<void> _loadOpinionsStats() async {
+    try {
+      final prefs = await SharedPreferences.getInstance();
+      final savedOpinions = prefs.getString('userOpinions');
+
+      if (savedOpinions != null) {
+        final List<dynamic> opinionsData = json.decode(savedOpinions);
+
+        // Calcular estatísticas por jogo
+        for (var opinionData in opinionsData) {
+          final gameId = opinionData['gameId']?.toString() ?? '';
+          final rating = (opinionData['rating'] as num?)?.toDouble() ?? 0.0;
+          final recommended = opinionData['recommended'] == true;
+
+          if (!_gameStats.containsKey(gameId)) {
+            _gameStats[gameId] = {
+              'count': 0,
+              'totalRating': 0.0,
+              'recommendedCount': 0,
+              'averageRating': 0.0,
+              'recommendationRate': 0.0,
+            };
+          }
+
+          _gameStats[gameId]!['count'] =
+              (_gameStats[gameId]!['count'] as int) + 1;
+          _gameStats[gameId]!['totalRating'] =
+              (_gameStats[gameId]!['totalRating'] as double) + rating;
+          if (recommended) {
+            _gameStats[gameId]!['recommendedCount'] =
+                (_gameStats[gameId]!['recommendedCount'] as int) + 1;
+          }
+
+          // Calcular médias
+          final count = _gameStats[gameId]!['count'] as int;
+          final totalRating = _gameStats[gameId]!['totalRating'] as double;
+          final recommendedCount =
+              _gameStats[gameId]!['recommendedCount'] as int;
+
+          _gameStats[gameId]!['averageRating'] = count > 0
+              ? totalRating / count
+              : 0.0;
+          _gameStats[gameId]!['recommendationRate'] = count > 0
+              ? (recommendedCount / count) * 100
+              : 0.0;
+        }
+
+        if (mounted) {
+          setState(() {});
+        }
+      }
+    } catch (e) {
+      print('Erro ao carregar estatísticas de opiniões: $e');
+    }
+  }
+
   List<Game> get _filteredGames {
     return _games.where((game) {
       final categoryMatch =
@@ -346,7 +420,14 @@ class _GamesCatalogScreenState extends State<GamesCatalogScreen> {
   void _navigateToGameDetails(Game game) {
     Navigator.push(
       context,
-      MaterialPageRoute(builder: (context) => GameDetailsScreen(game: game)),
+      MaterialPageRoute(
+        builder: (context) => GameDetailsScreen(
+          game: game,
+          opinionsCount: _gameStats[game.id]?['count'] ?? 0,
+          averageRating: _gameStats[game.id]?['averageRating'] ?? 0.0,
+          recommendationRate: _gameStats[game.id]?['recommendationRate'] ?? 0.0,
+        ),
+      ),
     );
   }
 
@@ -364,16 +445,49 @@ class _GamesCatalogScreenState extends State<GamesCatalogScreen> {
     );
   }
 
+  void _navigateToOpinions(Game game) {
+    Navigator.push(
+      context,
+      MaterialPageRoute(builder: (context) => OpinionScreen(game: game)),
+    ).then((_) {
+      _loadOpinionsStats();
+    });
+  }
+
+  void _navigateToAllOpinions() {
+    Navigator.push(
+      context,
+      MaterialPageRoute(builder: (context) => const OpinionScreen()),
+    );
+  }
+
+  void _createOpinionForGame(Game game) async {
+    final result = await Navigator.push(
+      context,
+      MaterialPageRoute(
+        builder: (context) =>
+            OpinionEditorScreen(gameId: game.id, gameTitle: game.title),
+      ),
+    );
+
+    if (result != null && result is bool && result) {
+      _showSnackBar('✅ Opinião criada com sucesso!');
+      _loadOpinionsStats();
+    }
+  }
+
   void _addToMyGames(Game game) {
-    _showSnackBar('${game.title} adicionado à sua lista!');
+    _showSnackBar('🎮 ${game.title} adicionado à sua lista!');
   }
 
   void _showSnackBar(String message) {
     ScaffoldMessenger.of(context).showSnackBar(
       SnackBar(
         content: Text(message),
-        backgroundColor: const Color(0xFF667EEA),
+        backgroundColor: Colors.blue,
         behavior: SnackBarBehavior.floating,
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+        duration: const Duration(seconds: 2),
       ),
     );
   }
@@ -381,10 +495,10 @@ class _GamesCatalogScreenState extends State<GamesCatalogScreen> {
   void _showFilterModal() {
     showModalBottomSheet(
       context: context,
-      backgroundColor: const Color(0xFF1A1A2E),
+      backgroundColor: Colors.white,
       isScrollControlled: true,
       shape: const RoundedRectangleBorder(
-        borderRadius: BorderRadius.vertical(top: Radius.circular(20)),
+        borderRadius: BorderRadius.vertical(top: Radius.circular(24)),
       ),
       builder: (context) {
         return FilterModalContent(
@@ -417,24 +531,45 @@ class _GamesCatalogScreenState extends State<GamesCatalogScreen> {
     );
   }
 
+  Map<String, dynamic>? _getGameStats(String gameId) {
+    return _gameStats[gameId];
+  }
+
+  int _getOpinionsCount(String gameId) {
+    return _gameStats[gameId]?['count'] ?? 0;
+  }
+
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      backgroundColor: const Color(0xFF0F0F1E),
+      backgroundColor: Colors.white,
       appBar: AppBar(
-        backgroundColor: const Color(0xFF1A1A2E),
+        backgroundColor: Colors.white,
+        elevation: 0,
         title: const Text(
           'Catálogo de Jogos',
-          style: TextStyle(color: Colors.white, fontWeight: FontWeight.bold),
+          style: TextStyle(
+            color: Colors.black,
+            fontWeight: FontWeight.w600,
+            fontSize: 22,
+          ),
         ),
         actions: [
           IconButton(
-            icon: const Icon(Icons.person, color: Colors.white),
+            icon: const Icon(Icons.reviews_outlined, color: Colors.purple),
+            onPressed: _navigateToAllOpinions,
+            tooltip: 'Ver todas as opiniões',
+          ),
+          IconButton(
+            icon: const Icon(Icons.person_outline, color: Colors.black54),
             onPressed: _navigateToProfile,
             tooltip: 'Perfil',
           ),
           IconButton(
-            icon: const Icon(Icons.collections_bookmark, color: Colors.white),
+            icon: const Icon(
+              Icons.collections_bookmark_outlined,
+              color: Colors.black54,
+            ),
             onPressed: _navigateToMyGames,
             tooltip: 'Meus Jogos',
           ),
@@ -442,7 +577,7 @@ class _GamesCatalogScreenState extends State<GamesCatalogScreen> {
       ),
       body: Column(
         children: [
-          // BARRA DE PESQUISA
+          // BARRA DE PESQUISA COM FILTRO
           Padding(
             padding: const EdgeInsets.all(16.0),
             child: Row(
@@ -460,34 +595,40 @@ class _GamesCatalogScreenState extends State<GamesCatalogScreen> {
                       hintStyle: const TextStyle(color: Colors.grey),
                       prefixIcon: const Icon(Icons.search, color: Colors.grey),
                       filled: true,
-                      fillColor: const Color(0xFF1A1A2E),
+                      fillColor: Colors.grey[50],
                       border: OutlineInputBorder(
-                        borderRadius: BorderRadius.circular(12),
+                        borderRadius: BorderRadius.circular(16),
                         borderSide: BorderSide.none,
                       ),
                       contentPadding: const EdgeInsets.symmetric(
-                        horizontal: 16,
+                        horizontal: 20,
+                        vertical: 16,
                       ),
+                      suffixIcon: _searchQuery.isNotEmpty
+                          ? IconButton(
+                              icon: const Icon(Icons.clear, color: Colors.grey),
+                              onPressed: () {
+                                _searchController.clear();
+                                setState(() {
+                                  _searchQuery = '';
+                                });
+                              },
+                            )
+                          : null,
                     ),
-                    style: const TextStyle(color: Colors.white),
+                    style: const TextStyle(color: Colors.black87),
                   ),
                 ),
                 const SizedBox(width: 12),
                 // BOTÃO FILTRO
                 Container(
                   decoration: BoxDecoration(
-                    color: const Color(0xFF1A1A2E),
+                    color: Colors.grey[50],
                     borderRadius: BorderRadius.circular(12),
-                    border: Border.all(
-                      color: const Color(0xFF667EEA),
-                      width: 1,
-                    ),
+                    border: Border.all(color: Colors.grey[200]!, width: 1),
                   ),
                   child: IconButton(
-                    icon: const Icon(
-                      Icons.filter_list,
-                      color: Color(0xFF667EEA),
-                    ),
+                    icon: const Icon(Icons.filter_list, color: Colors.black54),
                     onPressed: _showFilterModal,
                     tooltip: 'Filtros',
                   ),
@@ -526,11 +667,13 @@ class _GamesCatalogScreenState extends State<GamesCatalogScreen> {
                       setState(() {
                         _selectedCategory = 'Todos';
                         _selectedPlatform = 'Todas';
+                        _searchController.clear();
+                        _searchQuery = '';
                       });
                     },
                     child: const Text(
                       'Limpar tudo',
-                      style: TextStyle(color: Color(0xFF667EEA), fontSize: 12),
+                      style: TextStyle(color: Colors.blue, fontSize: 12),
                     ),
                   ),
                 ],
@@ -550,16 +693,35 @@ class _GamesCatalogScreenState extends State<GamesCatalogScreen> {
                     vertical: 6,
                   ),
                   decoration: BoxDecoration(
-                    color: const Color(0xFF2A2A3E),
+                    color: Colors.grey[50],
                     borderRadius: BorderRadius.circular(16),
                   ),
-                  child: Text(
-                    '${_filteredGames.length} jogos encontrados',
-                    style: const TextStyle(
-                      color: Colors.grey,
-                      fontSize: 12,
-                      fontWeight: FontWeight.w500,
-                    ),
+                  child: Row(
+                    children: [
+                      const Icon(Icons.games, size: 14, color: Colors.grey),
+                      const SizedBox(width: 6),
+                      Text(
+                        '${_filteredGames.length} jogos',
+                        style: const TextStyle(
+                          color: Colors.grey,
+                          fontSize: 12,
+                          fontWeight: FontWeight.w500,
+                        ),
+                      ),
+                      const SizedBox(width: 8),
+                      const Text('•', style: TextStyle(color: Colors.grey)),
+                      const SizedBox(width: 8),
+                      const Icon(Icons.reviews, size: 14, color: Colors.grey),
+                      const SizedBox(width: 6),
+                      Text(
+                        '${_gameStats.length} com opiniões',
+                        style: const TextStyle(
+                          color: Colors.grey,
+                          fontSize: 12,
+                          fontWeight: FontWeight.w500,
+                        ),
+                      ),
+                    ],
                   ),
                 ),
               ],
@@ -571,20 +733,27 @@ class _GamesCatalogScreenState extends State<GamesCatalogScreen> {
           // LISTA DE JOGOS
           Expanded(
             child: _filteredGames.isEmpty
-                ? const Center(
+                ? Center(
                     child: Column(
                       mainAxisAlignment: MainAxisAlignment.center,
                       children: [
-                        Icon(Icons.search_off, size: 80, color: Colors.grey),
-                        SizedBox(height: 16),
-                        Text(
+                        const Icon(
+                          Icons.search_off,
+                          size: 64,
+                          color: Colors.grey,
+                        ),
+                        const SizedBox(height: 16),
+                        const Text(
                           'Nenhum jogo encontrado',
                           style: TextStyle(color: Colors.grey, fontSize: 16),
                         ),
-                        SizedBox(height: 8),
+                        const SizedBox(height: 8),
                         Text(
                           'Tente ajustar os filtros ou a busca',
-                          style: TextStyle(color: Colors.grey, fontSize: 12),
+                          style: TextStyle(
+                            color: Colors.grey[600],
+                            fontSize: 12,
+                          ),
                         ),
                       ],
                     ),
@@ -594,7 +763,10 @@ class _GamesCatalogScreenState extends State<GamesCatalogScreen> {
                     itemCount: _filteredGames.length,
                     itemBuilder: (context, index) {
                       final game = _filteredGames[index];
-                      return _buildGameCard(game);
+                      final gameStats = _getGameStats(game.id);
+                      final opinionsCount = gameStats?['count'] ?? 0;
+
+                      return _buildGameCard(game, opinionsCount, gameStats);
                     },
                   ),
           ),
@@ -614,7 +786,7 @@ class _GamesCatalogScreenState extends State<GamesCatalogScreen> {
           label,
           style: const TextStyle(color: Colors.white, fontSize: 12),
         ),
-        backgroundColor: const Color(0xFF667EEA),
+        backgroundColor: Colors.blue,
         deleteIcon: const Icon(Icons.close, size: 16, color: Colors.white),
         onDeleted: onRemove,
         materialTapTargetSize: MaterialTapTargetSize.shrinkWrap,
@@ -622,37 +794,48 @@ class _GamesCatalogScreenState extends State<GamesCatalogScreen> {
     );
   }
 
-  Widget _buildGameCard(Game game) {
+  Widget _buildGameCard(
+    Game game,
+    int opinionsCount,
+    Map<String, dynamic>? gameStats,
+  ) {
+    final averageRating = gameStats?['averageRating'] ?? 0.0;
+    final recommendationRate = gameStats?['recommendationRate'] ?? 0.0;
+
     return Card(
       margin: const EdgeInsets.only(bottom: 16),
-      color: const Color(0xFF1A1A2E),
-      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+      color: Colors.white,
+      elevation: 2,
+      shape: RoundedRectangleBorder(
+        borderRadius: BorderRadius.circular(16),
+        side: const BorderSide(color: Colors.grey, width: 0.1),
+      ),
       child: InkWell(
         onTap: () => _navigateToGameDetails(game),
-        borderRadius: BorderRadius.circular(12),
+        borderRadius: BorderRadius.circular(16),
         child: Padding(
           padding: const EdgeInsets.all(16),
           child: Row(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              // CAPA DO JOGO COM TRATAMENTO DE ERRO
+              // CAPA DO JOGO
               Container(
                 width: 80,
                 height: 100,
                 decoration: BoxDecoration(
-                  borderRadius: BorderRadius.circular(8),
-                  color: const Color(0xFF2A2A3E),
+                  borderRadius: BorderRadius.circular(12),
+                  color: Colors.grey[100],
                 ),
                 child: ClipRRect(
-                  borderRadius: BorderRadius.circular(8),
+                  borderRadius: BorderRadius.circular(12),
                   child: Image.network(
                     game.coverUrl,
                     fit: BoxFit.cover,
                     errorBuilder: (context, error, stackTrace) {
                       return Container(
-                        color: const Color(0xFF2A2A3E),
+                        color: Colors.grey[100],
                         child: const Icon(
-                          Icons.gamepad,
+                          Icons.games_outlined,
                           color: Colors.grey,
                           size: 40,
                         ),
@@ -661,10 +844,10 @@ class _GamesCatalogScreenState extends State<GamesCatalogScreen> {
                     loadingBuilder: (context, child, loadingProgress) {
                       if (loadingProgress == null) return child;
                       return Container(
-                        color: const Color(0xFF2A2A3E),
+                        color: Colors.grey[100],
                         child: const Center(
                           child: CircularProgressIndicator(
-                            color: Color(0xFF667EEA),
+                            color: Colors.blue,
                             strokeWidth: 2,
                           ),
                         ),
@@ -680,15 +863,53 @@ class _GamesCatalogScreenState extends State<GamesCatalogScreen> {
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
-                    Text(
-                      game.title,
-                      style: const TextStyle(
-                        color: Colors.white,
-                        fontSize: 16,
-                        fontWeight: FontWeight.bold,
-                      ),
-                      maxLines: 2,
-                      overflow: TextOverflow.ellipsis,
+                    Row(
+                      children: [
+                        Expanded(
+                          child: Text(
+                            game.title,
+                            style: const TextStyle(
+                              color: Colors.black,
+                              fontSize: 16,
+                              fontWeight: FontWeight.w600,
+                            ),
+                            maxLines: 2,
+                            overflow: TextOverflow.ellipsis,
+                          ),
+                        ),
+                        if (opinionsCount > 0)
+                          Container(
+                            padding: const EdgeInsets.symmetric(
+                              horizontal: 8,
+                              vertical: 4,
+                            ),
+                            decoration: BoxDecoration(
+                              color: Colors.purple.withOpacity(0.1),
+                              borderRadius: BorderRadius.circular(12),
+                              border: Border.all(
+                                color: Colors.purple.withOpacity(0.3),
+                              ),
+                            ),
+                            child: Row(
+                              children: [
+                                const Icon(
+                                  Icons.reviews,
+                                  size: 12,
+                                  color: Colors.purple,
+                                ),
+                                const SizedBox(width: 4),
+                                Text(
+                                  '$opinionsCount',
+                                  style: const TextStyle(
+                                    color: Colors.purple,
+                                    fontSize: 11,
+                                    fontWeight: FontWeight.w600,
+                                  ),
+                                ),
+                              ],
+                            ),
+                          ),
+                      ],
                     ),
                     const SizedBox(height: 4),
                     Text(
@@ -705,19 +926,86 @@ class _GamesCatalogScreenState extends State<GamesCatalogScreen> {
                         _buildInfoChip(_formatPlatforms(game.platforms)),
                       ],
                     ),
-                    const SizedBox(height: 8),
+
+                    // ESTATÍSTICAS DE OPINIÕES
+                    if (opinionsCount > 0)
+                      Padding(
+                        padding: const EdgeInsets.only(top: 8),
+                        child: Row(
+                          children: [
+                            // Rating médio
+                            _buildStatsChip(
+                              Icons.star,
+                              averageRating.toStringAsFixed(1),
+                              Colors.amber,
+                            ),
+                            const SizedBox(width: 8),
+
+                            // Taxa de recomendação
+                            _buildStatsChip(
+                              Icons.thumb_up,
+                              '${recommendationRate.toStringAsFixed(0)}%',
+                              Colors.green,
+                            ),
+                          ],
+                        ),
+                      ),
+
+                    const SizedBox(height: 12),
+
+                    // BOTÕES DE AÇÃO
                     Row(
                       children: [
-                        const Icon(Icons.star, color: Colors.amber, size: 16),
-                        const SizedBox(width: 4),
-                        Text(
-                          game.rating.toString(),
-                          style: const TextStyle(
-                            color: Colors.amber,
-                            fontSize: 12,
-                            fontWeight: FontWeight.bold,
+                        // Botão ver opiniões
+                        Expanded(
+                          child: OutlinedButton.icon(
+                            onPressed: () => _navigateToOpinions(game),
+                            style: OutlinedButton.styleFrom(
+                              foregroundColor: Colors.purple,
+                              side: const BorderSide(color: Colors.purple),
+                              padding: const EdgeInsets.symmetric(vertical: 8),
+                              shape: RoundedRectangleBorder(
+                                borderRadius: BorderRadius.circular(8),
+                              ),
+                            ),
+                            icon: const Icon(Icons.reviews, size: 16),
+                            label: Text(
+                              opinionsCount > 0
+                                  ? 'Ver Opiniões'
+                                  : 'Sem opiniões',
+                              style: const TextStyle(fontSize: 12),
+                            ),
                           ),
                         ),
+                        const SizedBox(width: 8),
+
+                        // Botão dar opinião
+                        Expanded(
+                          child: ElevatedButton.icon(
+                            onPressed: () => _createOpinionForGame(game),
+                            style: ElevatedButton.styleFrom(
+                              backgroundColor: Colors.green,
+                              foregroundColor: Colors.white,
+                              padding: const EdgeInsets.symmetric(vertical: 8),
+                              shape: RoundedRectangleBorder(
+                                borderRadius: BorderRadius.circular(8),
+                              ),
+                            ),
+                            icon: const Icon(Icons.edit_note, size: 16),
+                            label: const Text(
+                              'Opinar',
+                              style: TextStyle(fontSize: 12),
+                            ),
+                          ),
+                        ),
+                      ],
+                    ),
+
+                    const SizedBox(height: 8),
+
+                    // PREÇO
+                    Row(
+                      children: [
                         const Spacer(),
                         Text(
                           game.price == 0
@@ -726,9 +1014,9 @@ class _GamesCatalogScreenState extends State<GamesCatalogScreen> {
                           style: TextStyle(
                             color: game.price == 0
                                 ? Colors.green
-                                : Colors.green,
-                            fontSize: 14,
-                            fontWeight: FontWeight.bold,
+                                : Colors.black,
+                            fontSize: 16,
+                            fontWeight: FontWeight.w600,
                           ),
                         ),
                       ],
@@ -737,15 +1025,17 @@ class _GamesCatalogScreenState extends State<GamesCatalogScreen> {
                 ),
               ),
 
-              // BOTÃO ADICIONAR
+              // BOTÃO ADICIONAR À LISTA
               IconButton(
-                icon: const Icon(
-                  Icons.add_circle_outline,
-                  color: Color(0xFF667EEA),
+                icon: Icon(
+                  game.isInLibrary
+                      ? Icons.check_circle
+                      : Icons.add_circle_outline,
+                  color: game.isInLibrary ? Colors.green : Colors.blue,
                   size: 28,
                 ),
                 onPressed: () => _addToMyGames(game),
-                tooltip: 'Adicionar à lista',
+                tooltip: game.isInLibrary ? 'Já na lista' : 'Adicionar à lista',
               ),
             ],
           ),
@@ -758,12 +1048,39 @@ class _GamesCatalogScreenState extends State<GamesCatalogScreen> {
     return Container(
       padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
       decoration: BoxDecoration(
-        color: const Color(0xFF2A2A3E),
+        color: Colors.grey[50],
         borderRadius: BorderRadius.circular(6),
+        border: Border.all(color: Colors.grey[200]!, width: 0.5),
       ),
       child: Text(
         text,
         style: const TextStyle(color: Colors.grey, fontSize: 10),
+      ),
+    );
+  }
+
+  Widget _buildStatsChip(IconData icon, String value, Color color) {
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+      decoration: BoxDecoration(
+        color: color.withOpacity(0.1),
+        borderRadius: BorderRadius.circular(6),
+        border: Border.all(color: color.withOpacity(0.3)),
+      ),
+      child: Row(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          Icon(icon, size: 12, color: color),
+          const SizedBox(width: 4),
+          Text(
+            value,
+            style: TextStyle(
+              color: color,
+              fontSize: 11,
+              fontWeight: FontWeight.w600,
+            ),
+          ),
+        ],
       ),
     );
   }
@@ -774,210 +1091,5 @@ class _GamesCatalogScreenState extends State<GamesCatalogScreen> {
     } else {
       return '${platforms.take(2).join(', ')}+${platforms.length - 2}';
     }
-  }
-}
-
-class FilterModalContent extends StatefulWidget {
-  final String selectedCategory;
-  final String selectedPlatform;
-  final List<String> categories;
-  final List<String> platforms;
-  final ValueChanged<String> onCategoryChanged;
-  final ValueChanged<String> onPlatformChanged;
-  final VoidCallback onClearFilters;
-  final VoidCallback onApplyFilters;
-
-  const FilterModalContent({
-    super.key,
-    required this.selectedCategory,
-    required this.selectedPlatform,
-    required this.categories,
-    required this.platforms,
-    required this.onCategoryChanged,
-    required this.onPlatformChanged,
-    required this.onClearFilters,
-    required this.onApplyFilters,
-  });
-
-  @override
-  State<FilterModalContent> createState() => _FilterModalContentState();
-}
-
-class _FilterModalContentState extends State<FilterModalContent> {
-  late String _tempCategory;
-  late String _tempPlatform;
-
-  @override
-  void initState() {
-    super.initState();
-    _tempCategory = widget.selectedCategory;
-    _tempPlatform = widget.selectedPlatform;
-  }
-
-  @override
-  Widget build(BuildContext context) {
-    return Container(
-      padding: const EdgeInsets.all(24),
-      child: Column(
-        mainAxisSize: MainAxisSize.min,
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          // CABEÇALHO
-          Row(
-            mainAxisAlignment: MainAxisAlignment.spaceBetween,
-            children: [
-              const Text(
-                'Filtros',
-                style: TextStyle(
-                  color: Colors.white,
-                  fontSize: 20,
-                  fontWeight: FontWeight.bold,
-                ),
-              ),
-              IconButton(
-                icon: const Icon(Icons.close, color: Colors.grey),
-                onPressed: () => Navigator.pop(context),
-              ),
-            ],
-          ),
-
-          const SizedBox(height: 24),
-
-          // FILTRO DE CATEGORIA
-          _buildFilterSection(
-            'Categoria',
-            Icons.category,
-            widget.categories,
-            _tempCategory,
-            (value) {
-              setState(() {
-                _tempCategory = value;
-              });
-            },
-          ),
-
-          const SizedBox(height: 24),
-
-          // FILTRO DE PLATAFORMA
-          _buildFilterSection(
-            'Plataforma',
-            Icons.computer,
-            widget.platforms,
-            _tempPlatform,
-            (value) {
-              setState(() {
-                _tempPlatform = value;
-              });
-            },
-          ),
-
-          const SizedBox(height: 32),
-
-          // BOTÕES
-          Row(
-            children: [
-              Expanded(
-                child: OutlinedButton(
-                  onPressed: () {
-                    setState(() {
-                      _tempCategory = 'Todos';
-                      _tempPlatform = 'Todas';
-                    });
-                    widget.onClearFilters();
-                  },
-                  style: OutlinedButton.styleFrom(
-                    foregroundColor: const Color(0xFF667EEA),
-                    side: const BorderSide(color: Color(0xFF667EEA)),
-                    padding: const EdgeInsets.symmetric(vertical: 16),
-                    shape: RoundedRectangleBorder(
-                      borderRadius: BorderRadius.circular(12),
-                    ),
-                  ),
-                  child: const Text('Limpar Filtros'),
-                ),
-              ),
-              const SizedBox(width: 12),
-              Expanded(
-                child: ElevatedButton(
-                  onPressed: () {
-                    widget.onCategoryChanged(_tempCategory);
-                    widget.onPlatformChanged(_tempPlatform);
-                    widget.onApplyFilters();
-                  },
-                  style: ElevatedButton.styleFrom(
-                    backgroundColor: const Color(0xFF667EEA),
-                    foregroundColor: Colors.white,
-                    padding: const EdgeInsets.symmetric(vertical: 16),
-                    shape: RoundedRectangleBorder(
-                      borderRadius: BorderRadius.circular(12),
-                    ),
-                  ),
-                  child: const Text('Aplicar Filtros'),
-                ),
-              ),
-            ],
-          ),
-
-          const SizedBox(height: 16),
-        ],
-      ),
-    );
-  }
-
-  Widget _buildFilterSection(
-    String title,
-    IconData icon,
-    List<String> options,
-    String selectedValue,
-    ValueChanged<String> onSelected,
-  ) {
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.start,
-      children: [
-        Row(
-          children: [
-            Icon(icon, color: const Color(0xFF667EEA), size: 20),
-            const SizedBox(width: 8),
-            Text(
-              title,
-              style: const TextStyle(
-                color: Colors.white,
-                fontSize: 16,
-                fontWeight: FontWeight.bold,
-              ),
-            ),
-          ],
-        ),
-        const SizedBox(height: 12),
-        Wrap(
-          spacing: 8,
-          runSpacing: 8,
-          children: options.map((option) {
-            final isSelected = selectedValue == option;
-            return ChoiceChip(
-              label: Text(
-                option,
-                style: TextStyle(
-                  color: isSelected ? Colors.white : Colors.grey,
-                  fontSize: 14,
-                  fontWeight: isSelected ? FontWeight.w600 : FontWeight.normal,
-                ),
-              ),
-              selected: isSelected,
-              onSelected: (selected) {
-                onSelected(option);
-              },
-              backgroundColor: const Color(0xFF2A2A3E),
-              selectedColor: const Color(0xFF667EEA),
-              side: BorderSide.none,
-              shape: RoundedRectangleBorder(
-                borderRadius: BorderRadius.circular(20),
-              ),
-              padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
-            );
-          }).toList(),
-        ),
-      ],
-    );
   }
 }

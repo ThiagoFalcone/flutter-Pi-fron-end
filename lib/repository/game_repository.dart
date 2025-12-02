@@ -1,5 +1,5 @@
 // game_repository.dart
-import 'game_model.dart';
+import '../models/game_model.dart';
 
 class GameRepository {
   static final GameRepository _instance = GameRepository._internal();

@@ -1,8 +1,7 @@
 import 'package:flutter/material.dart';
-import 'package:flutter_teste/catalogo_screen.dart';
-import 'package:flutter_teste/custom_change_notifier.dart';
-import 'package:flutter_teste/login_screen.dart';
-import 'package:flutter_teste/game_provider.dart';
+import 'package:provider/provider.dart';
+import 'package:flutter_teste/providers/game_provider.dart';
+import 'package:flutter_teste/screen/login_screen.dart';
 
 void main() {
   runApp(const MyApp());
@@ -13,38 +12,25 @@ class MyApp extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return ChangeNotifierProvider<GameProvider>(
-      // Especifique o tipo genérico aqui
-      create: () => GameProvider(), // Remova o parâmetro context
+    return MultiProvider(
+      providers: [ChangeNotifierProvider(create: (_) => GameProvider())],
       child: MaterialApp(
-        title: 'GameHub - Catálogo de Jogos',
+        title: 'Game Catalog',
         theme: ThemeData(
-          colorScheme: ColorScheme.fromSeed(
-            seedColor: const Color(0xFF667EEA),
-            primary: const Color(0xFF667EEA),
-            secondary: const Color(0xFF764BA2),
-            brightness: Brightness.dark,
-          ),
-          useMaterial3: true,
-          fontFamily: 'Inter',
-          inputDecorationTheme: InputDecorationTheme(
-            border: OutlineInputBorder(
-              borderRadius: BorderRadius.circular(15),
-              borderSide: BorderSide.none,
-            ),
-            filled: true,
-            fillColor: Colors.grey[50],
-            contentPadding: const EdgeInsets.symmetric(
-              horizontal: 20,
-              vertical: 18,
+          primaryColor: const Color(0xFF667EEA),
+          scaffoldBackgroundColor: Colors.white,
+          appBarTheme: const AppBarTheme(
+            backgroundColor: Colors.white,
+            elevation: 0,
+            iconTheme: IconThemeData(color: Colors.black),
+            titleTextStyle: TextStyle(
+              color: Colors.black,
+              fontSize: 20,
+              fontWeight: FontWeight.w600,
             ),
           ),
         ),
-        initialRoute: '/login',
-        routes: {
-          '/login': (context) => const LoginScreen(),
-          '/catalog': (context) => const GamesCatalogScreen(),
-        },
+        home: const LoginScreen(),
         debugShowCheckedModeBanner: false,
       ),
     );
