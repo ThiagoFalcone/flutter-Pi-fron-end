@@ -101,6 +101,27 @@ class Game {
     );
   }
 
+  factory Game.fromBackendJson(Map<String, dynamic> json) {
+    return Game(
+      id: json['id']?.toString() ?? '',
+      title: json['titulo']?.toString() ?? '',
+      developer: json['desenvolvedora']?.toString() ?? '',
+      publisher: '', // não vem do backend
+      price: 0.0, // não vem do backend
+      rating: _parseDouble(json['mediaNotas']),
+      coverUrl: json['capaUrl']?.toString() ?? '',
+      description: '', // não vem do backend
+      category: json['categoria']?.toString() ?? '',
+      platforms: [json['plataforma']?.toString() ?? ''], // transforma em lista
+      releaseYear: _parseInt(json['anoLancamento']),
+      isCompleted: false, // valor padrão
+      completionDate: null, // valor padrão
+      playtime: 0, // valor padrão
+      platform: json['plataforma']?.toString() ?? '',
+      isInLibrary: false, // valor padrão
+    );
+  }
+
   // Método para converter para JSON
   Map<String, dynamic> toJson() {
     return {

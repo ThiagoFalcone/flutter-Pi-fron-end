@@ -1,3 +1,5 @@
+import 'dart:convert';
+
 import 'package:flutter/material.dart';
 import 'package:flutter_teste/service/auth_service.dart';
 import 'login_screen.dart';
@@ -45,7 +47,7 @@ class _RegisterScreenState extends State<RegisterScreen> {
           _showSnackBar('Cadastro realizado com sucesso!');
           _navigateToLogin();
         } else {
-          _showSnackBar('Erro no cadastro: ${result.errorMessage}');
+          _showSnackBar('Não foi possível cadastrar o usuário.');
         }
       } catch (e) {
         _showSnackBar('Erro ao realizar cadastro: $e');
@@ -303,8 +305,8 @@ class _RegisterScreenState extends State<RegisterScreen> {
                     if (value == null || value.isEmpty) {
                       return 'Por favor, digite sua senha';
                     }
-                    if (value.length < 6) {
-                      return 'A senha deve ter pelo menos 6 caracteres';
+                    if (value.length < 8) {
+                      return 'A senha deve ter pelo menos 8 caracteres';
                     }
                     return null;
                   },

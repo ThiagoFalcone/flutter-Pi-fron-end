@@ -1,6 +1,9 @@
 import 'package:flutter/material.dart';
 import 'register_screen.dart';
 import 'catalogo_screen.dart';
+import 'package:http/http.dart' as http;
+import '../utils/api_config.dart';
+import 'dart:convert';
 
 class LoginScreen extends StatefulWidget {
   const LoginScreen({super.key});
@@ -25,14 +28,33 @@ class _LoginScreenState extends State<LoginScreen> {
       _isLoading = true;
     });
 
-    await Future.delayed(const Duration(seconds: 2));
+    try {
+      final response = await http.post(
+        Uri.parse('${ApiConfig.baseUrl}/usuario/logar'),
+        headers: {'Content-Type': 'application/json'},
+        body: jsonEncode({
+          'email': _emailController.text,
+          'senha': _passwordController.text,
+        }),
+      );
 
-    setState(() {
-      _isLoading = false;
-    });
+      setState(() {
+        _isLoading = false;
+      });
 
-    _showSnackBar('Login realizado com sucesso!');
-    _navigateToCatalog();
+      if (response.statusCode == 200) {
+        final usuario = jsonDecode(response.body);
+        _showSnackBar('Bem-vindo, ${usuario['nome']}!');
+        _navigateToCatalog();
+      } else {
+        _showSnackBar('Credenciais inválidas');
+      }
+    } catch (e) {
+      setState(() {
+        _isLoading = false;
+      });
+      _showSnackBar('Erro de conexão com o servidor');
+    }
   }
 
   void _showSnackBar(String message) {
