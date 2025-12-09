@@ -2,6 +2,9 @@
 
 import 'package:flutter/material.dart';
 import 'game_model.dart';
+import 'custom_change_notifier.dart';
+import 'game_provider.dart';
+import 'friends_list_screen.dart';
 
 class ProfileScreen extends StatefulWidget {
   const ProfileScreen({super.key});
@@ -97,63 +100,46 @@ class _ProfileScreenState extends State<ProfileScreen> {
       psnId: 'PSN_GameMaster',
       xboxId: 'XboxGameMaster#1234',
       nintendoId: 'SW-1234-5678-9012',
-      completedGames: [
-        Game(
-          id: '1',
-          title: 'The Witcher 3: Wild Hunt',
-          developer: 'CD Projekt Red',
-          publisher: 'CD Projekt',
-          price: 79.90,
-          rating: 4.9,
-          coverUrl:
-              'https://images.igdb.com/igdb/image/upload/t_cover_big/co2rry.jpg',
-          description:
-              'RPG de mundo aberto em um universo de fantasia sombria.',
-          category: 'RPG',
-          platforms: ['PC', 'PlayStation', 'Xbox', 'Switch'],
-          releaseYear: 2015,
-          isCompleted: true,
-          completionDate: DateTime(2023, 10, 15),
-          playtime: 120,
-          platform: 'PC',
-          isInLibrary: true,
-        ),
-        Game(
-          id: '7',
-          title: 'Stardew Valley',
-          developer: 'ConcernedApe',
-          publisher: 'ConcernedApe',
-          price: 24.90,
-          rating: 4.9,
-          coverUrl:
-              'https://images.igdb.com/igdb/image/upload/t_cover_big/co2rrd.jpg',
-          description: 'Simulação de fazenda e vida rural.',
-          category: 'Simulação',
-          platforms: ['PC', 'PlayStation', 'Xbox', 'Switch', 'Mobile'],
-          releaseYear: 2016,
-          isCompleted: true,
-          completionDate: DateTime(2023, 8, 20),
-          playtime: 85,
-          platform: 'Switch',
-          isInLibrary: true,
-        ),
-      ],
-      totalPlaytime: 450,
+      completedGames: [], // Será preenchido com jogos da biblioteca que estão completados
+      totalPlaytime: 0,
       avatarUrl:
           'https://images.unsplash.com/photo-1535713875002-d1d0cf377fde?ixlib=rb-4.0.3&ixid=M3wxMjA3fDB8MHxwaG90by1wYWdlfHx8fGVufDB8fHx8fA%3D%3D&auto=format&fit=crop&w=500&q=80',
     );
-
-    // Inicializar controladores para cada jogo
-    for (var game in _userProfile.completedGames) {
-      _hoursControllers[game.id] = TextEditingController(
-        text: game.playtime.toString(),
-      );
-    }
 
     _steamController.text = _userProfile.steamId ?? '';
     _psnController.text = _userProfile.psnId ?? '';
     _xboxController.text = _userProfile.xboxId ?? '';
     _nintendoController.text = _userProfile.nintendoId ?? '';
+  }
+
+  // Método para obter jogos da biblioteca (mostra todos os jogos na biblioteca)
+  List<Game> _getCompletedGames(GameProvider gameProvider) {
+    // Mostra todos os jogos da biblioteca, não apenas os completados
+    return gameProvider.myGames.toList();
+  }
+
+  // Método para atualizar o perfil com jogos da biblioteca
+  void _updateProfileWithLibraryGames(GameProvider gameProvider) {
+    final completedGames = _getCompletedGames(gameProvider);
+    final totalPlaytime = completedGames.fold(
+      0,
+      (sum, game) => sum + game.playtime,
+    );
+
+    setState(() {
+      _userProfile = _userProfile.copyWith(
+        completedGames: completedGames,
+        totalPlaytime: totalPlaytime,
+      );
+
+      // Atualizar controladores de horas
+      _hoursControllers.clear();
+      for (var game in completedGames) {
+        _hoursControllers[game.id] = TextEditingController(
+          text: game.playtime.toString(),
+        );
+      }
+    });
   }
 
   void _saveProfile() {
@@ -173,32 +159,15 @@ class _ProfileScreenState extends State<ProfileScreen> {
     _showSnackBar('Perfil atualizado com sucesso!');
   }
 
-  void _updateGameHours(String gameId, String hoursText) {
+  void _updateGameHours(String gameId, String hoursText, GameProvider gameProvider) {
     final hours = int.tryParse(hoursText) ?? 0;
-    setState(() {
-      // Atualizar horas do jogo específico
-      final updatedGames = _userProfile.completedGames.map((game) {
-        if (game.id == gameId) {
-          return game.copyWith(playtime: hours);
-        }
-        return game;
-      }).toList();
-
-      // Calcular novo total de horas
-      final totalPlaytime = updatedGames.fold(
-        0,
-        (sum, game) => sum + game.playtime,
-      );
-
-      // Atualizar o perfil completo
-      _userProfile = _userProfile.copyWith(
-        completedGames: updatedGames,
-        totalPlaytime: totalPlaytime,
-      );
-
-      // Atualizar o controlador também
+    // Atualizar o jogo no repositório através do provider
+    final game = gameProvider.getGameById(gameId);
+    if (game != null) {
+      // Aqui você precisaria adicionar um método no GameRepository para atualizar o playtime
+      // Por enquanto, apenas atualizamos o controlador local
       _hoursControllers[gameId]?.text = hours.toString();
-    });
+    }
   }
 
   void _removeGame(String gameId) {
@@ -210,7 +179,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
       _hoursControllers.remove(gameId);
 
       // Mostrar mensagem de confirmação
-      _showSnackBar('Jogo removido da lista de completados');
+      _showSnackBar('Jogo removido da biblioteca');
     });
   }
 
@@ -229,13 +198,13 @@ class _ProfileScreenState extends State<ProfileScreen> {
   }
 
   // Método para obter jogos visíveis (excluindo os removidos)
-  List<Game> get _visibleCompletedGames {
-    return _userProfile.completedGames
+  List<Game> _visibleCompletedGames(List<Game> completedGames) {
+    return completedGames
         .where((game) => !_removedGames.contains(game.id))
         .toList();
   }
 
-  void _showEditHoursDialog(Game game) {
+  void _showEditHoursDialog(Game game, GameProvider gameProvider) {
     final controller = TextEditingController(text: game.playtime.toString());
 
     showDialog(
@@ -379,7 +348,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
                       onPressed: () {
                         final hours =
                             int.tryParse(controller.text) ?? game.playtime;
-                        _updateGameHours(game.id, hours.toString());
+                        _updateGameHours(game.id, hours.toString(), gameProvider);
                         Navigator.pop(context);
                         _showSnackBar(
                           '✅ Horas de ${game.title} atualizadas para $hours h',
@@ -412,7 +381,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
     );
   }
 
-  void _showGameOptionsDialog(Game game) {
+  void _showGameOptionsDialog(Game game, GameProvider gameProvider) {
     showModalBottomSheet(
       context: context,
       backgroundColor: const Color(0xFF1A1A2E),
@@ -464,7 +433,8 @@ class _ProfileScreenState extends State<ProfileScreen> {
                 ),
                 onTap: () {
                   Navigator.pop(context);
-                  _showEditHoursDialog(game);
+                  final gameProvider = ChangeNotifierProvider.of<GameProvider>(context);
+                  _showEditHoursDialog(game, gameProvider);
                 },
               ),
 
@@ -506,7 +476,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
           style: TextStyle(color: Colors.white, fontWeight: FontWeight.bold),
         ),
         content: Text(
-          'Tem certeza que deseja remover "${game.title}" da sua lista de jogos completados?',
+          'Tem certeza que deseja remover "${game.title}" da sua biblioteca?',
           style: TextStyle(color: Colors.grey),
         ),
         actions: [
@@ -526,8 +496,8 @@ class _ProfileScreenState extends State<ProfileScreen> {
     );
   }
 
-  void _showRemovedGamesDialog() {
-    final removedGames = _userProfile.completedGames
+  void _showRemovedGamesDialog(List<Game> completedGames) {
+    final removedGames = completedGames
         .where((game) => _removedGames.contains(game.id))
         .toList();
 
@@ -622,9 +592,35 @@ class _ProfileScreenState extends State<ProfileScreen> {
           height: 60,
           decoration: BoxDecoration(
             borderRadius: BorderRadius.circular(6),
-            image: DecorationImage(
-              image: NetworkImage(game.coverUrl),
+            color: const Color(0xFF2A2A3E),
+          ),
+          child: ClipRRect(
+            borderRadius: BorderRadius.circular(6),
+            child: Image.network(
+              game.coverUrl,
               fit: BoxFit.cover,
+              errorBuilder: (context, error, stackTrace) {
+                return Container(
+                  color: const Color(0xFF2A2A3E),
+                  child: const Icon(
+                    Icons.gamepad,
+                    color: Colors.grey,
+                    size: 20,
+                  ),
+                );
+              },
+              loadingBuilder: (context, child, loadingProgress) {
+                if (loadingProgress == null) return child;
+                return Container(
+                  color: const Color(0xFF2A2A3E),
+                  child: const Center(
+                    child: CircularProgressIndicator(
+                      color: Color(0xFF667EEA),
+                      strokeWidth: 2,
+                    ),
+                  ),
+                );
+              },
             ),
           ),
         ),
@@ -646,7 +642,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
     );
   }
 
-  void _showShareMenu() {
+  void _showShareMenu(List<Game> visibleGames, int totalPlaytime) {
     showModalBottomSheet(
       context: context,
       backgroundColor: const Color(0xFF1A1A2E),
@@ -685,7 +681,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
                 ),
                 itemCount: _shareOptions.length,
                 itemBuilder: (context, index) {
-                  return _buildShareOption(_shareOptions[index]);
+                  return _buildShareOption(_shareOptions[index], visibleGames, totalPlaytime);
                 },
               ),
               const SizedBox(height: 20),
@@ -696,9 +692,9 @@ class _ProfileScreenState extends State<ProfileScreen> {
     );
   }
 
-  Widget _buildShareOption(ShareOption option) {
+  Widget _buildShareOption(ShareOption option, List<Game> visibleGames, int totalPlaytime) {
     return GestureDetector(
-      onTap: () => _handleShare(option),
+      onTap: () => _handleShare(option, visibleGames, totalPlaytime),
       child: Container(
         decoration: BoxDecoration(
           color: const Color(0xFF2A2A3E),
@@ -732,15 +728,15 @@ class _ProfileScreenState extends State<ProfileScreen> {
     );
   }
 
-  void _handleShare(ShareOption option) {
+  void _handleShare(ShareOption option, List<Game> visibleGames, int totalPlaytime) {
     Navigator.pop(context);
 
     final profileUrl =
         'https://gametracker.com/profile/${_userProfile.username}';
     final message =
         'Confira meu perfil de jogador: ${_userProfile.username}\n'
-        '🎮 ${_visibleCompletedGames.length} jogos completados\n'
-        '⏰ ${_userProfile.totalPlaytime}h jogadas\n'
+        '🎮 ${visibleGames.length} jogos na biblioteca\n'
+        '⏰ ${totalPlaytime}h jogadas\n'
         '📧 ${_userProfile.email}\n\n'
         'Link: $profileUrl';
 
@@ -836,66 +832,78 @@ class _ProfileScreenState extends State<ProfileScreen> {
 
   @override
   Widget build(BuildContext context) {
-    return Scaffold(
-      backgroundColor: const Color(0xFF0F0F1E),
-      appBar: AppBar(
-        backgroundColor: const Color(0xFF1A1A2E),
-        title: const Text(
-          'Meu Perfil',
-          style: TextStyle(color: Colors.white, fontWeight: FontWeight.bold),
-        ),
-        actions: [
-          // Botão para ver jogos removidos
-          if (_removedGames.isNotEmpty)
-            IconButton(
-              icon: Container(
-                padding: const EdgeInsets.all(6),
-                decoration: BoxDecoration(
-                  color: Colors.orange.withOpacity(0.2),
-                  borderRadius: BorderRadius.circular(8),
-                ),
-                child: Badge(
-                  smallSize: 8,
-                  backgroundColor: Colors.orange,
-                  child: const Icon(
-                    Icons.restore,
-                    color: Colors.orange,
-                    size: 20,
+    return Consumer<GameProvider>(
+      builder: (context, gameProvider, child) {
+        // Atualizar perfil com jogos da biblioteca
+        final completedGames = _getCompletedGames(gameProvider);
+        final visibleGames = _visibleCompletedGames(completedGames);
+        final totalPlaytime = completedGames.fold(
+          0,
+          (sum, game) => sum + game.playtime,
+        );
+
+        return Scaffold(
+          backgroundColor: const Color(0xFF0F0F1E),
+          appBar: AppBar(
+            backgroundColor: const Color(0xFF1A1A2E),
+            title: const Text(
+              'Meu Perfil',
+              style: TextStyle(color: Colors.white, fontWeight: FontWeight.bold),
+            ),
+            actions: [
+              // Botão para ver jogos removidos
+              if (_removedGames.isNotEmpty)
+                IconButton(
+                  icon: Container(
+                    padding: const EdgeInsets.all(6),
+                    decoration: BoxDecoration(
+                      color: Colors.orange.withOpacity(0.2),
+                      borderRadius: BorderRadius.circular(8),
+                    ),
+                    child: Badge(
+                      smallSize: 8,
+                      backgroundColor: Colors.orange,
+                      child: const Icon(
+                        Icons.restore,
+                        color: Colors.orange,
+                        size: 20,
+                      ),
+                    ),
                   ),
+                  onPressed: () => _showRemovedGamesDialog(completedGames),
+                  tooltip: 'Jogos Removidos',
                 ),
+              IconButton(
+                icon: Container(
+                  padding: const EdgeInsets.all(6),
+                  decoration: BoxDecoration(
+                    color: const Color(0xFF2A2A3E),
+                    borderRadius: BorderRadius.circular(8),
+                  ),
+                  child: const Icon(Icons.share, color: Colors.white, size: 20),
+                ),
+                onPressed: () => _showShareMenu(visibleGames, totalPlaytime),
+                tooltip: 'Compartilhar Perfil',
               ),
-              onPressed: _showRemovedGamesDialog,
-              tooltip: 'Jogos Removidos',
-            ),
-          IconButton(
-            icon: Container(
-              padding: const EdgeInsets.all(6),
-              decoration: BoxDecoration(
-                color: const Color(0xFF2A2A3E),
-                borderRadius: BorderRadius.circular(8),
-              ),
-              child: const Icon(Icons.share, color: Colors.white, size: 20),
-            ),
-            onPressed: _showShareMenu,
-            tooltip: 'Compartilhar Perfil',
+            ],
           ),
-        ],
-      ),
-      body: SingleChildScrollView(
-        padding: const EdgeInsets.all(16),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            _buildProfileHeader(),
-            const SizedBox(height: 24),
-            _buildStatistics(),
-            const SizedBox(height: 24),
-            _buildPlatformIds(),
-            const SizedBox(height: 24),
-            _buildCompletedGames(),
-          ],
-        ),
-      ),
+          body: SingleChildScrollView(
+            padding: const EdgeInsets.all(16),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                _buildProfileHeader(),
+                const SizedBox(height: 24),
+                _buildStatistics(visibleGames.length, totalPlaytime, gameProvider),
+                const SizedBox(height: 24),
+                _buildPlatformIds(),
+                const SizedBox(height: 24),
+                _buildCompletedGames(visibleGames, gameProvider),
+              ],
+            ),
+          ),
+        );
+      },
     );
   }
 
@@ -1024,7 +1032,10 @@ class _ProfileScreenState extends State<ProfileScreen> {
     );
   }
 
-  Widget _buildStatistics() {
+  Widget _buildStatistics(int completedGamesCount, int totalPlaytime, GameProvider gameProvider) {
+    final followers = gameProvider.getFollowers();
+    final following = gameProvider.getFollowingUsers();
+    
     return Container(
       padding: const EdgeInsets.all(16),
       decoration: BoxDecoration(
@@ -1054,19 +1065,43 @@ class _ProfileScreenState extends State<ProfileScreen> {
             mainAxisAlignment: MainAxisAlignment.spaceAround,
             children: [
               _buildStatItem(
-                'Jogos Completados',
-                _visibleCompletedGames.length.toString(),
+                'Meus Jogos',
+                completedGamesCount.toString(),
                 Icons.videogame_asset,
               ),
               _buildStatItem(
                 'Horas Jogadas',
-                '${_userProfile.totalPlaytime}h',
+                '${totalPlaytime}h',
                 Icons.timer,
               ),
-              _buildStatItem('Plataformas', '4', Icons.computer),
+              _buildStatItemWithTap(
+                'Seguidores',
+                '${followers.length}',
+                Icons.people,
+                () => _showFriendsList(context, gameProvider, followers, 'Meus Seguidores'),
+              ),
+              _buildStatItemWithTap(
+                'Seguindo',
+                '${following.length}',
+                Icons.person_add,
+                () => _showFriendsList(context, gameProvider, following, 'Estou Seguindo'),
+              ),
             ],
           ),
         ],
+      ),
+    );
+  }
+
+  void _showFriendsList(BuildContext context, GameProvider gameProvider, List<User> friends, String title) {
+    Navigator.push(
+      context,
+      MaterialPageRoute(
+        builder: (context) => FriendsListScreen(
+          userId: 'user_1', // ID do usuário atual
+          title: title,
+          friends: friends,
+        ),
       ),
     );
   }
@@ -1098,6 +1133,50 @@ class _ProfileScreenState extends State<ProfileScreen> {
           textAlign: TextAlign.center,
         ),
       ],
+    );
+  }
+
+  Widget _buildStatItemWithTap(String label, String value, IconData icon, VoidCallback onTap) {
+    return GestureDetector(
+      onTap: onTap,
+      child: Column(
+        children: [
+          Container(
+            padding: const EdgeInsets.all(12),
+            decoration: BoxDecoration(
+              color: const Color(0xFF2A2A3E),
+              shape: BoxShape.circle,
+            ),
+            child: Icon(icon, color: const Color(0xFF667EEA), size: 24),
+          ),
+          const SizedBox(height: 8),
+          Text(
+            value,
+            style: const TextStyle(
+              color: Colors.white,
+              fontSize: 18,
+              fontWeight: FontWeight.bold,
+            ),
+          ),
+          const SizedBox(height: 4),
+          Row(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              Text(
+                label,
+                style: const TextStyle(color: Colors.grey, fontSize: 12),
+                textAlign: TextAlign.center,
+              ),
+              const SizedBox(width: 4),
+              const Icon(
+                Icons.arrow_forward_ios,
+                size: 10,
+                color: Color(0xFF667EEA),
+              ),
+            ],
+          ),
+        ],
+      ),
     );
   }
 
@@ -1217,7 +1296,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
     );
   }
 
-  Widget _buildCompletedGames() {
+  Widget _buildCompletedGames(List<Game> visibleGames, GameProvider gameProvider) {
     return Container(
       padding: const EdgeInsets.all(16),
       decoration: BoxDecoration(
@@ -1237,7 +1316,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
           Row(
             children: [
               const Text(
-                'Jogos Completados',
+                'Meus Jogos',
                 style: TextStyle(
                   color: Colors.white,
                   fontSize: 18,
@@ -1252,7 +1331,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
                   borderRadius: BorderRadius.circular(12),
                 ),
                 child: Text(
-                  _visibleCompletedGames.length.toString(),
+                  visibleGames.length.toString(),
                   style: const TextStyle(
                     color: Color(0xFF667EEA),
                     fontSize: 12,
@@ -1263,7 +1342,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
             ],
           ),
           const SizedBox(height: 16),
-          if (_visibleCompletedGames.isEmpty)
+          if (visibleGames.isEmpty)
             const Center(
               child: Column(
                 children: [
@@ -1274,7 +1353,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
                   ),
                   SizedBox(height: 8),
                   Text(
-                    'Nenhum jogo completado ainda',
+                    'Nenhum jogo na biblioteca ainda',
                     style: TextStyle(color: Colors.grey, fontSize: 14),
                   ),
                 ],
@@ -1282,8 +1361,8 @@ class _ProfileScreenState extends State<ProfileScreen> {
             )
           else
             Column(
-              children: _visibleCompletedGames.map((game) {
-                return _buildCompletedGameItem(game);
+              children: visibleGames.map((game) {
+                return _buildCompletedGameItem(game, gameProvider);
               }).toList(),
             ),
         ],
@@ -1291,7 +1370,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
     );
   }
 
-  Widget _buildCompletedGameItem(Game game) {
+  Widget _buildCompletedGameItem(Game game, GameProvider gameProvider) {
     return Container(
       margin: const EdgeInsets.only(bottom: 12),
       decoration: BoxDecoration(
@@ -1308,7 +1387,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
       child: Material(
         color: Colors.transparent,
         child: InkWell(
-          onTap: () => _showGameOptionsDialog(game),
+          onTap: () => _showGameOptionsDialog(game, gameProvider),
           borderRadius: BorderRadius.circular(12),
           child: Padding(
             padding: const EdgeInsets.all(16),
@@ -1320,17 +1399,36 @@ class _ProfileScreenState extends State<ProfileScreen> {
                   height: 70,
                   decoration: BoxDecoration(
                     borderRadius: BorderRadius.circular(8),
-                    image: DecorationImage(
-                      image: NetworkImage(game.coverUrl),
+                    color: const Color(0xFF2A2A3E),
+                  ),
+                  child: ClipRRect(
+                    borderRadius: BorderRadius.circular(8),
+                    child: Image.network(
+                      game.coverUrl,
                       fit: BoxFit.cover,
+                      errorBuilder: (context, error, stackTrace) {
+                        return Container(
+                          color: const Color(0xFF2A2A3E),
+                          child: const Icon(
+                            Icons.gamepad,
+                            color: Colors.grey,
+                            size: 30,
+                          ),
+                        );
+                      },
+                      loadingBuilder: (context, child, loadingProgress) {
+                        if (loadingProgress == null) return child;
+                        return Container(
+                          color: const Color(0xFF2A2A3E),
+                          child: const Center(
+                            child: CircularProgressIndicator(
+                              color: Color(0xFF667EEA),
+                              strokeWidth: 2,
+                            ),
+                          ),
+                        );
+                      },
                     ),
-                    boxShadow: [
-                      BoxShadow(
-                        color: Colors.black.withOpacity(0.5),
-                        blurRadius: 4,
-                        offset: const Offset(0, 2),
-                      ),
-                    ],
                   ),
                 ),
                 const SizedBox(width: 16),
@@ -1354,7 +1452,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
 
                       // LINHA DE HORAS EDITÁVEL
                       GestureDetector(
-                        onTap: () => _showEditHoursDialog(game),
+                        onTap: () => _showEditHoursDialog(game, gameProvider),
                         child: Container(
                           padding: const EdgeInsets.symmetric(
                             horizontal: 8,
@@ -1404,6 +1502,10 @@ class _ProfileScreenState extends State<ProfileScreen> {
                         ),
                       ),
 
+                      const SizedBox(height: 6),
+
+                      // Seletor de Status
+                      _buildGameStatusSelector(game, gameProvider),
                       const SizedBox(height: 6),
 
                       // PLATAFORMA E DATA
@@ -1486,6 +1588,122 @@ class _ProfileScreenState extends State<ProfileScreen> {
           ),
         ),
       ),
+    );
+  }
+
+  Widget _buildGameStatusSelector(Game game, GameProvider gameProvider) {
+    final status = game.gameStatus;
+    return GestureDetector(
+      onTap: () => _showGameStatusSelector(context, game, gameProvider),
+      child: Container(
+        padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
+        decoration: BoxDecoration(
+          color: status.color.withOpacity(0.2),
+          borderRadius: BorderRadius.circular(20),
+          border: Border.all(
+            color: status.color,
+            width: 1.5,
+          ),
+        ),
+        child: Row(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            Icon(status.icon, color: status.color, size: 14),
+            const SizedBox(width: 6),
+            Text(
+              status.label,
+              style: TextStyle(
+                color: status.color,
+                fontSize: 11,
+                fontWeight: FontWeight.bold,
+              ),
+            ),
+            const SizedBox(width: 4),
+            Icon(
+              Icons.arrow_drop_down,
+              color: status.color,
+              size: 14,
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
+  void _showGameStatusSelector(
+    BuildContext context,
+    Game game,
+    GameProvider gameProvider,
+  ) {
+    showModalBottomSheet(
+      context: context,
+      backgroundColor: const Color(0xFF1A1A2E),
+      shape: const RoundedRectangleBorder(
+        borderRadius: BorderRadius.vertical(top: Radius.circular(20)),
+      ),
+      builder: (context) {
+        return Container(
+          padding: const EdgeInsets.all(20),
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Center(
+                child: Container(
+                  width: 60,
+                  height: 4,
+                  margin: const EdgeInsets.only(bottom: 20),
+                  decoration: BoxDecoration(
+                    color: Colors.grey.withOpacity(0.5),
+                    borderRadius: BorderRadius.circular(2),
+                  ),
+                ),
+              ),
+              Text(
+                'Status: ${game.title}',
+                style: const TextStyle(
+                  color: Colors.white,
+                  fontSize: 18,
+                  fontWeight: FontWeight.bold,
+                ),
+                maxLines: 1,
+                overflow: TextOverflow.ellipsis,
+              ),
+              const SizedBox(height: 16),
+              ...GameStatus.values.map((status) {
+                final isSelected = game.gameStatus == status;
+                return ListTile(
+                  leading: Container(
+                    width: 40,
+                    height: 40,
+                    decoration: BoxDecoration(
+                      color: status.color.withOpacity(0.2),
+                      shape: BoxShape.circle,
+                    ),
+                    child: Icon(status.icon, color: status.color),
+                  ),
+                  title: Text(
+                    status.label,
+                    style: TextStyle(
+                      color: Colors.white,
+                      fontWeight: isSelected ? FontWeight.bold : FontWeight.normal,
+                    ),
+                  ),
+                  trailing: isSelected
+                      ? const Icon(Icons.check, color: Color(0xFF667EEA))
+                      : null,
+                  onTap: () {
+                    gameProvider.updateGameStatus(game.id, status);
+                    Navigator.pop(context);
+                    _showSnackBar('Status alterado para ${status.label}');
+                  },
+                  contentPadding: EdgeInsets.zero,
+                );
+              }).toList(),
+            ],
+          ),
+        );
+      },
     );
   }
 }

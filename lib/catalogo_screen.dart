@@ -3,6 +3,9 @@ import 'game_model.dart';
 import 'game_details_screen.dart';
 import 'my_games_screen.dart';
 import 'profile_screen.dart';
+import 'custom_change_notifier.dart';
+import 'game_provider.dart';
+import 'user_search_screen.dart';
 
 class GamesCatalogScreen extends StatefulWidget {
   const GamesCatalogScreen({super.key});
@@ -12,293 +15,7 @@ class GamesCatalogScreen extends StatefulWidget {
 }
 
 class _GamesCatalogScreenState extends State<GamesCatalogScreen> {
-  final List<Game> _games = [
-    Game(
-      id: '1',
-      title: 'The Witcher 3: Wild Hunt',
-      developer: 'CD Projekt Red',
-      publisher: 'CD Projekt',
-      price: 79.90,
-      rating: 4.9,
-      coverUrl:
-          'https://images.igdb.com/igdb/image/upload/t_cover_big/co1xrx.jpg',
-      description: 'RPG de mundo aberto em um universo de fantasia sombria.',
-      category: 'RPG',
-      platforms: ['PC', 'PlayStation', 'Xbox', 'Switch'],
-      releaseYear: 2015,
-      platform: 'Multiplataforma',
-      isInLibrary: false,
-      isCompleted: false,
-      completionDate: null,
-      playtime: 0,
-    ),
-    Game(
-      id: '2',
-      title: 'Cyberpunk 2077',
-      developer: 'CD Projekt Red',
-      publisher: 'CD Projekt',
-      price: 129.90,
-      rating: 4.2,
-      coverUrl:
-          'https://images.igdb.com/igdb/image/upload/t_cover_big/coaih8.jpg',
-      description: 'RPG de ação em um futuro distópico.',
-      category: 'RPG',
-      platforms: ['PC', 'PlayStation', 'Xbox'],
-      releaseYear: 2020,
-      platform: 'Multiplataforma',
-      isInLibrary: false,
-      isCompleted: false,
-      completionDate: null,
-      playtime: 0,
-    ),
-    Game(
-      id: '3',
-      title: 'Red Dead Redemption 2',
-      developer: 'Rockstar Games',
-      publisher: 'Rockstar Games',
-      price: 149.90,
-      rating: 4.8,
-      coverUrl:
-          'https://images.igdb.com/igdb/image/upload/t_cover_big/co1q1f.jpg',
-      description: 'Aventura no velho oeste americano.',
-      category: 'Aventura',
-      platforms: ['PC', 'PlayStation', 'Xbox'],
-      releaseYear: 2018,
-      platform: 'Multiplataforma',
-      isInLibrary: false,
-      isCompleted: false,
-      completionDate: null,
-      playtime: 0,
-    ),
-    Game(
-      id: '4',
-      title: 'God of War Ragnarök',
-      developer: 'Santa Monica Studio',
-      publisher: 'Sony Interactive Entertainment',
-      price: 249.90,
-      rating: 4.9,
-      coverUrl:
-          'https://images.igdb.com/igdb/image/upload/t_cover_big/co5s5v.webp',
-      description: 'Sequência da jornada de Kratos e Atreus.',
-      category: 'Ação',
-      platforms: ['PlayStation'],
-      releaseYear: 2022,
-      platform: 'PlayStation',
-      isInLibrary: false,
-      isCompleted: false,
-      completionDate: null,
-      playtime: 0,
-    ),
-    Game(
-      id: '5',
-      title: 'The Last of Us Part II',
-      developer: 'Naughty Dog',
-      publisher: 'Sony Interactive Entertainment',
-      price: 199.90,
-      rating: 4.7,
-      coverUrl:
-          'https://images.igdb.com/igdb/image/upload/t_cover_big/co5ziw.webp',
-      description: 'Sobrevivência em um mundo pós-apocalíptico.',
-      category: 'Ação',
-      platforms: ['PlayStation', 'PC'],
-      releaseYear: 2020,
-      platform: 'Multiplataforma',
-      isInLibrary: false,
-      isCompleted: false,
-      completionDate: null,
-      playtime: 0,
-    ),
-    Game(
-      id: '6',
-      title: 'Hollow Knight',
-      developer: 'Team Cherry',
-      publisher: 'Team Cherry',
-      price: 29.90,
-      rating: 4.8,
-      coverUrl:
-          'https://images.igdb.com/igdb/image/upload/t_cover_big/co93cr.webp',
-      description: 'Aventura de ação em um reino de insetos.',
-      category: 'Metroidvania',
-      platforms: ['PC', 'PlayStation', 'Xbox', 'Switch'],
-      releaseYear: 2017,
-      platform: 'Multiplataforma',
-      isInLibrary: false,
-      isCompleted: false,
-      completionDate: null,
-      playtime: 0,
-    ),
-    Game(
-      id: '7',
-      title: 'Stardew Valley',
-      developer: 'ConcernedApe',
-      publisher: 'ConcernedApe',
-      price: 24.90,
-      rating: 4.9,
-      coverUrl:
-          'https://images.igdb.com/igdb/image/upload/t_cover_big/coa93h.webp',
-      description: 'Simulação de fazenda e vida rural.',
-      category: 'Simulação',
-      platforms: ['PC', 'PlayStation', 'Xbox', 'Switch', 'Mobile'],
-      releaseYear: 2016,
-      platform: 'Multiplataforma',
-      isInLibrary: false,
-      isCompleted: false,
-      completionDate: null,
-      playtime: 0,
-    ),
-    Game(
-      id: '8',
-      title: 'Hades',
-      developer: 'Supergiant Games',
-      publisher: 'Supergiant Games',
-      price: 49.90,
-      rating: 4.9,
-      coverUrl:
-          'https://images.igdb.com/igdb/image/upload/t_cover_big/co39vc.webp',
-      description: 'Roguelike de ação no submundo grego.',
-      category: 'Roguelike',
-      platforms: ['PC', 'PlayStation', 'Xbox', 'Switch'],
-      releaseYear: 2020,
-      platform: 'Multiplataforma',
-      isInLibrary: false,
-      isCompleted: false,
-      completionDate: null,
-      playtime: 0,
-    ),
-    Game(
-      id: '9',
-      title: 'Elden Ring',
-      developer: 'FromSoftware',
-      publisher: 'Bandai Namco',
-      price: 199.90,
-      rating: 4.9,
-      coverUrl:
-          'https://images.igdb.com/igdb/image/upload/t_cover_big/co3p2d.jpg',
-      description: 'RPG de ação em mundo aberto pelos criadores de Dark Souls.',
-      category: 'RPG',
-      platforms: ['PC', 'PlayStation', 'Xbox'],
-      releaseYear: 2022,
-      platform: 'Multiplataforma',
-      isInLibrary: false,
-      isCompleted: false,
-      completionDate: null,
-      playtime: 0,
-    ),
-    Game(
-      id: '10',
-      title: 'Minecraft',
-      developer: 'Mojang Studios',
-      publisher: 'Mojang Studios',
-      price: 89.90,
-      rating: 4.8,
-      coverUrl:
-          'https://images.igdb.com/igdb/image/upload/t_cover_big/co8fu7.webp',
-      description: 'Jogo sandbox de construção e aventura.',
-      category: 'Sandbox',
-      platforms: ['PC', 'PlayStation', 'Xbox', 'Switch', 'Mobile'],
-      releaseYear: 2011,
-      platform: 'Multiplataforma',
-      isInLibrary: false,
-      isCompleted: false,
-      completionDate: null,
-      playtime: 0,
-    ),
-    Game(
-      id: '11',
-      title: 'Grand Theft Auto V',
-      developer: 'Rockstar Games',
-      publisher: 'Rockstar Games',
-      price: 99.90,
-      rating: 4.7,
-      coverUrl:
-          'https://images.igdb.com/igdb/image/upload/t_cover_big/co9751.webp',
-      description: 'Mundo aberto de ação e aventura.',
-      category: 'Ação',
-      platforms: ['PC', 'PlayStation', 'Xbox'],
-      releaseYear: 2013,
-      platform: 'Multiplataforma',
-      isInLibrary: false,
-      isCompleted: false,
-      completionDate: null,
-      playtime: 0,
-    ),
-    Game(
-      id: '12',
-      title: 'The Legend of Zelda: Breath of the Wild',
-      developer: 'Nintendo',
-      publisher: 'Nintendo',
-      price: 299.90,
-      rating: 4.9,
-      coverUrl:
-          'https://images.igdb.com/igdb/image/upload/t_cover_big/co31di.webp',
-      description: 'Aventura épica no reino de Hyrule.',
-      category: 'Aventura',
-      platforms: ['Switch'],
-      releaseYear: 2017,
-      platform: 'Switch',
-      isInLibrary: false,
-      isCompleted: false,
-      completionDate: null,
-      playtime: 0,
-    ),
-    Game(
-      id: '13',
-      title: 'Counter-Strike 2',
-      developer: 'Valve',
-      publisher: 'Valve',
-      price: 0.00,
-      rating: 4.5,
-      coverUrl:
-          'https://images.igdb.com/igdb/image/upload/t_cover_big/coaczd.webp',
-      description: 'FPS tático competitivo.',
-      category: 'FPS',
-      platforms: ['PC'],
-      releaseYear: 2023,
-      platform: 'PC',
-      isInLibrary: false,
-      isCompleted: false,
-      completionDate: null,
-      playtime: 0,
-    ),
-    Game(
-      id: '14',
-      title: 'Dead Cells',
-      developer: 'Motion Twin',
-      publisher: 'Motion Twin',
-      price: 37.90,
-      rating: 4.6,
-      coverUrl:
-          'https://images.igdb.com/igdb/image/upload/t_cover_big/co7jfv.webp',
-      description: 'Roguelike de ação com combate rápido.',
-      category: 'Roguelike',
-      platforms: ['PC', 'PlayStation', 'Xbox', 'Switch', 'Mobile'],
-      releaseYear: 2018,
-      platform: 'Multiplataforma',
-      isInLibrary: false,
-      isCompleted: false,
-      completionDate: null,
-      playtime: 0,
-    ),
-    Game(
-      id: '15',
-      title: 'Celeste',
-      developer: 'Maddy Makes Games',
-      publisher: 'Maddy Makes Games',
-      price: 42.90,
-      rating: 4.7,
-      coverUrl:
-          'https://images.igdb.com/igdb/image/upload/t_cover_big/co3byy.webp',
-      description: 'Plataforma desafiadora com história emocionante.',
-      category: 'Plataforma',
-      platforms: ['PC', 'PlayStation', 'Xbox', 'Switch'],
-      releaseYear: 2018,
-      platform: 'Multiplataforma',
-      isInLibrary: false,
-      isCompleted: false,
-      completionDate: null,
-      playtime: 0,
-    ),
-  ];
+  // Lista de jogos agora vem do GameProvider
 
   final List<String> _categories = [
     'Todos',
@@ -327,8 +44,8 @@ class _GamesCatalogScreenState extends State<GamesCatalogScreen> {
   String _searchQuery = '';
   final TextEditingController _searchController = TextEditingController();
 
-  List<Game> get _filteredGames {
-    return _games.where((game) {
+  List<Game> _filteredGames(List<Game> games) {
+    return games.where((game) {
       final categoryMatch =
           _selectedCategory == 'Todos' || game.category == _selectedCategory;
       final platformMatch =
@@ -364,8 +81,21 @@ class _GamesCatalogScreenState extends State<GamesCatalogScreen> {
     );
   }
 
-  void _addToMyGames(Game game) {
-    _showSnackBar('${game.title} adicionado à sua lista!');
+  void _navigateToUserSearch() {
+    Navigator.push(
+      context,
+      MaterialPageRoute(builder: (context) => const UserSearchScreen()),
+    );
+  }
+
+  void _addToMyGames(Game game, GameProvider gameProvider) {
+    if (gameProvider.isGameInLibrary(game.id)) {
+      gameProvider.removeFromLibrary(game.id);
+      _showSnackBar('${game.title} removido da sua lista!');
+    } else {
+      gameProvider.addGame(game);
+      _showSnackBar('${game.title} adicionado à sua lista!');
+    }
   }
 
   void _showSnackBar(String message) {
@@ -419,6 +149,11 @@ class _GamesCatalogScreenState extends State<GamesCatalogScreen> {
 
   @override
   Widget build(BuildContext context) {
+    return Consumer<GameProvider>(
+      builder: (context, gameProvider, child) {
+        final games = gameProvider.allGames;
+        final filteredGames = _filteredGames(games);
+        
     return Scaffold(
       backgroundColor: const Color(0xFF0F0F1E),
       appBar: AppBar(
@@ -427,7 +162,32 @@ class _GamesCatalogScreenState extends State<GamesCatalogScreen> {
           'Catálogo de Jogos',
           style: TextStyle(color: Colors.white, fontWeight: FontWeight.bold),
         ),
-        actions: [
+            actions: [
+          IconButton(
+            icon: Stack(
+              children: [
+                const Icon(Icons.person, color: Colors.white),
+                Positioned(
+                  right: 0,
+                  top: 0,
+                  child: Container(
+                    padding: const EdgeInsets.all(2),
+                    decoration: const BoxDecoration(
+                      color: Color(0xFF667EEA),
+                      shape: BoxShape.circle,
+                    ),
+                    child: const Icon(
+                      Icons.add,
+                      size: 10,
+                      color: Colors.white,
+                    ),
+                  ),
+                ),
+              ],
+            ),
+            onPressed: _navigateToUserSearch,
+            tooltip: 'Buscar Usuários',
+          ),
           IconButton(
             icon: const Icon(Icons.person, color: Colors.white),
             onPressed: _navigateToProfile,
@@ -554,7 +314,7 @@ class _GamesCatalogScreenState extends State<GamesCatalogScreen> {
                     borderRadius: BorderRadius.circular(16),
                   ),
                   child: Text(
-                    '${_filteredGames.length} jogos encontrados',
+                    '${filteredGames.length} jogos encontrados',
                     style: const TextStyle(
                       color: Colors.grey,
                       fontSize: 12,
@@ -570,7 +330,7 @@ class _GamesCatalogScreenState extends State<GamesCatalogScreen> {
 
           // LISTA DE JOGOS
           Expanded(
-            child: _filteredGames.isEmpty
+            child: filteredGames.isEmpty
                 ? const Center(
                     child: Column(
                       mainAxisAlignment: MainAxisAlignment.center,
@@ -591,15 +351,17 @@ class _GamesCatalogScreenState extends State<GamesCatalogScreen> {
                   )
                 : ListView.builder(
                     padding: const EdgeInsets.symmetric(horizontal: 16),
-                    itemCount: _filteredGames.length,
+                    itemCount: filteredGames.length,
                     itemBuilder: (context, index) {
-                      final game = _filteredGames[index];
-                      return _buildGameCard(game);
+                      final game = filteredGames[index];
+                      return _buildGameCard(game, gameProvider);
                     },
                   ),
           ),
         ],
       ),
+    );
+      },
     );
   }
 
@@ -622,7 +384,9 @@ class _GamesCatalogScreenState extends State<GamesCatalogScreen> {
     );
   }
 
-  Widget _buildGameCard(Game game) {
+  Widget _buildGameCard(Game game, GameProvider gameProvider) {
+    final isInLibrary = gameProvider.isGameInLibrary(game.id);
+    
     return Card(
       margin: const EdgeInsets.only(bottom: 16),
       color: const Color(0xFF1A1A2E),
@@ -737,15 +501,15 @@ class _GamesCatalogScreenState extends State<GamesCatalogScreen> {
                 ),
               ),
 
-              // BOTÃO ADICIONAR
+              // BOTÃO ADICIONAR/REMOVER
               IconButton(
-                icon: const Icon(
-                  Icons.add_circle_outline,
-                  color: Color(0xFF667EEA),
+                icon: Icon(
+                  isInLibrary ? Icons.check_circle : Icons.add_circle_outline,
+                  color: isInLibrary ? Colors.green : const Color(0xFF667EEA),
                   size: 28,
                 ),
-                onPressed: () => _addToMyGames(game),
-                tooltip: 'Adicionar à lista',
+                onPressed: () => _addToMyGames(game, gameProvider),
+                tooltip: isInLibrary ? 'Já na biblioteca' : 'Adicionar à lista',
               ),
             ],
           ),

@@ -4,6 +4,130 @@ import 'custom_change_notifier.dart';
 import 'game_model.dart';
 import 'game_provider.dart';
 
+// Widget para selecionar status do jogo
+class GameStatusSelector extends StatelessWidget {
+  final Game game;
+  final GameProvider gameProvider;
+  final Function(GameStatus) onStatusChanged;
+
+  const GameStatusSelector({
+    super.key,
+    required this.game,
+    required this.gameProvider,
+    required this.onStatusChanged,
+  });
+
+  void _showStatusSelector(BuildContext context) {
+    showModalBottomSheet(
+      context: context,
+      backgroundColor: const Color(0xFF1A1A2E),
+      shape: const RoundedRectangleBorder(
+        borderRadius: BorderRadius.vertical(top: Radius.circular(20)),
+      ),
+      builder: (context) {
+        return Container(
+          padding: const EdgeInsets.all(20),
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Center(
+                child: Container(
+                  width: 60,
+                  height: 4,
+                  margin: const EdgeInsets.only(bottom: 20),
+                  decoration: BoxDecoration(
+                    color: Colors.grey.withOpacity(0.5),
+                    borderRadius: BorderRadius.circular(2),
+                  ),
+                ),
+              ),
+              const Text(
+                'Selecionar Status',
+                style: TextStyle(
+                  color: Colors.white,
+                  fontSize: 18,
+                  fontWeight: FontWeight.bold,
+                ),
+              ),
+              const SizedBox(height: 16),
+              ...GameStatus.values.map((status) {
+                final isSelected = game.gameStatus == status;
+                return ListTile(
+                  leading: Container(
+                    width: 40,
+                    height: 40,
+                    decoration: BoxDecoration(
+                      color: status.color.withOpacity(0.2),
+                      shape: BoxShape.circle,
+                    ),
+                    child: Icon(status.icon, color: status.color),
+                  ),
+                  title: Text(
+                    status.label,
+                    style: TextStyle(
+                      color: Colors.white,
+                      fontWeight: isSelected ? FontWeight.bold : FontWeight.normal,
+                    ),
+                  ),
+                  trailing: isSelected
+                      ? const Icon(Icons.check, color: Color(0xFF667EEA))
+                      : null,
+                  onTap: () {
+                    onStatusChanged(status);
+                    Navigator.pop(context);
+                  },
+                  contentPadding: EdgeInsets.zero,
+                );
+              }).toList(),
+            ],
+          ),
+        );
+      },
+    );
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final status = game.gameStatus;
+    return GestureDetector(
+      onTap: () => _showStatusSelector(context),
+      child: Container(
+        padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
+        decoration: BoxDecoration(
+          color: status.color.withOpacity(0.2),
+          borderRadius: BorderRadius.circular(20),
+          border: Border.all(
+            color: status.color,
+            width: 1.5,
+          ),
+        ),
+        child: Row(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            Icon(status.icon, color: status.color, size: 16),
+            const SizedBox(width: 6),
+            Text(
+              status.label,
+              style: TextStyle(
+                color: status.color,
+                fontSize: 12,
+                fontWeight: FontWeight.bold,
+              ),
+            ),
+            const SizedBox(width: 4),
+            Icon(
+              Icons.arrow_drop_down,
+              color: status.color,
+              size: 16,
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+}
+
 class MyGamesScreen extends StatefulWidget {
   const MyGamesScreen({super.key});
 
@@ -105,9 +229,35 @@ class _MyGamesScreenState extends State<MyGamesScreen> {
               height: 80,
               decoration: BoxDecoration(
                 borderRadius: BorderRadius.circular(8),
-                image: DecorationImage(
-                  image: NetworkImage(game.coverUrl),
+                color: const Color(0xFF2A2A3E),
+              ),
+              child: ClipRRect(
+                borderRadius: BorderRadius.circular(8),
+                child: Image.network(
+                  game.coverUrl,
                   fit: BoxFit.cover,
+                  errorBuilder: (context, error, stackTrace) {
+                    return Container(
+                      color: const Color(0xFF2A2A3E),
+                      child: const Icon(
+                        Icons.gamepad,
+                        color: Colors.grey,
+                        size: 30,
+                      ),
+                    );
+                  },
+                  loadingBuilder: (context, child, loadingProgress) {
+                    if (loadingProgress == null) return child;
+                    return Container(
+                      color: const Color(0xFF2A2A3E),
+                      child: const Center(
+                        child: CircularProgressIndicator(
+                          color: Color(0xFF667EEA),
+                          strokeWidth: 2,
+                        ),
+                      ),
+                    );
+                  },
                 ),
               ),
             ),
@@ -140,6 +290,16 @@ class _MyGamesScreenState extends State<MyGamesScreen> {
                       const SizedBox(width: 6),
                       _buildInfoChip(game.platform),
                     ],
+                  ),
+                  const SizedBox(height: 8),
+                  // Seletor de Status
+                  GameStatusSelector(
+                    game: game,
+                    gameProvider: gameProvider,
+                    onStatusChanged: (status) {
+                      gameProvider.updateGameStatus(game.id, status);
+                      _showSnackBar('Status de ${game.title} alterado para ${status.label}');
+                    },
                   ),
                   const SizedBox(height: 8),
                   Row(
