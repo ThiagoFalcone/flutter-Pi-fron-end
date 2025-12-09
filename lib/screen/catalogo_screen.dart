@@ -1,3 +1,5 @@
+// ignore_for_file: unused_field, unused_element, avoid_print, deprecated_member_use
+
 import 'dart:convert';
 import 'package:flutter/material.dart';
 import 'package:flutter_teste/models/filter_modal_content.dart'

@@ -1,4 +1,4 @@
-import 'dart:convert';
+// ignore_for_file: deprecated_member_use
 
 import 'package:flutter/material.dart';
 import 'package:flutter_teste/service/auth_service.dart';
